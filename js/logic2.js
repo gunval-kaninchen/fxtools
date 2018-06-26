@@ -1,52 +1,74 @@
+/*
+チャート作成
+ 
+name:　表の名称
+symbol:　通貨ペア
+fullWidth: 表示幅
+fullHeight:　表示高さ
+*/
 function chart(name, symbol, fullWidth, fullHeight) {
-    var margin = {top: 20, right: 30, bottom: 30, left: 30},
+        // マージンの設定    
+        var margin = {top: 20, right: 30, bottom: 30, left: 30},
             width = fullWidth - margin.left - margin.right,
             height = fullHeight - margin.top - margin.bottom,
             volumeHeight = fullHeight*.25;
+        
+        // 日付フォーマット
+        var parseDate = d3.timeParse("%Y-%m-%dT%H:%M:%S.%L%Z");
+        
+        // X軸の設定・・techan 取引時間軸の設定（時間枠をWidthに合わせる）
+        var x = techan.scale.financetime().range([0, width]);
 
-            var parseDate = d3.timeParse("%Y-%m-%dT%H:%M:%S.%L%Z");
+        // ズーム機能On
+        var zoom = d3.zoom().on("zoom", zoomed);
+        
+        // Y軸の設定・・d3のscaleLinear
+        var y = d3.scaleLinear().range([height, 0]);
 
-    var zoom = d3.zoom()
-            .on("zoom", zoomed);
-
-    var x = techan.scale.financetime()
-            .range([0, width]);
-
-    var y = d3.scaleLinear()
-            .range([height, 0]);
-
-    var yPercent = y.copy();   // Same as y at this stage, will get a different domain later
-
-    var yVolume = d3.scaleLinear()
-            .range([height, height - volumeHeight]);
-
-    var yInit, yPercentInit, zoomableInit;
-
-    var candlestick = techan.plot.candlestick()
+        // 不要？　Y軸パーセント？
+        // この段階でyと同じですが、後で別のドメインを取得します
+        var yPercent = y.copy(); 
+        
+        // 不要？　ボリュームのY軸？
+        var yVolume = d3.scaleLinear().range([height, height - volumeHeight]);
+        
+        var yInit, yPercentInit, zoomableInit;
+        
+        // ローソク足の設定(軸の設定)
+        var candlestick = techan.plot.candlestick()
+            .xScale(x)
+            .yScale(y);
+        // 単純移動平均の設定（軸の設定）
+        var sma0 = techan.plot.sma()
             .xScale(x)
             .yScale(y);
 
-    var sma0 = techan.plot.sma()
+        // 単純移動平均の設定（軸の設定）
+        var sma1 = techan.plot.sma()
             .xScale(x)
             .yScale(y);
+            
+        // ？
+        var xAxis = d3.axisBottom(x).ticks(4);
 
-    var sma1 = techan.plot.sma()
-            .xScale(x)
-            .yScale(y);
-
-    var xAxis = d3.axisBottom(x)
-            .ticks(4);
-
-    var yAxis = d3.axisRight(y)
-            .ticks(4);
-
-    var svg = d3.select("body").append("svg")
+        // ？
+        var yAxis = d3.axisRight(y).ticks(4);
+        
+        // SVGの作成
+        var svg = d3.select("body").append("svg")
             .attr("width", width + margin.left + margin.right)
             .attr("height", height + margin.top + margin.bottom)
             .append("g")
             .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
-    svg.append("clipPath")
+        // 表題
+        svg.append('text')
+            .attr("class", "symbol")
+            .attr("x", 5)
+            .text(name + " (" + symbol + ")");
+    
+        // ？
+        svg.append("clipPath")
             .attr("id", "clip")
             .append("rect")
             .attr("x", 0)
@@ -54,52 +76,53 @@ function chart(name, symbol, fullWidth, fullHeight) {
             .attr("width", width)
             .attr("height", y(0) - y(1));
 
-    svg.append('text')
-            .attr("class", "symbol")
-            .attr("x", 5)
-            .text(name + " (" + symbol + ")");
-
-    svg.append("g")
+        // ？
+        svg.append("g")
             .attr("class", "candlestick")
             .attr("clip-path", "url(#clip)");
 
-    svg.append("g")
+        // ？
+        svg.append("g")
             .attr("class", "indicator sma ma-0")
             .attr("clip-path", "url(#clip)");
 
-    svg.append("g")
+        // ？
+        svg.append("g")
             .attr("class", "indicator sma ma-1")
             .attr("clip-path", "url(#clip)");
 
-    svg.append("g")
+        // ？
+        svg.append("g")
             .attr("class", "x axis")
             .attr("transform", "translate(0," + height + ")");
 
-    svg.append("g")
+        // ？
+        svg.append("g")
             .attr("class", "y axis")
             .attr("transform", "translate(" + width + ",0)");
 
-    svg.append("rect")
+        // ？
+        svg.append("rect")
             .attr("class", "pane")
             .attr("width", width)
             .attr("height", height)
             .call(zoom);
 
-    d3.json("data.json", (error, data) => {
-        var accessor = candlestick.accessor(),
-            indicatorPreRoll = 33;  // Don't show where indicators don't have data
-
-        data = data.map(function (d) {
-            return {
-                date: parseDate(d.Date),
-                open: +d.Open,
-                high: +d.High,
-                low: +d.Low,
-                close: +d.Close,
-                volume: +d.Volume
-            };
+        // データ読み込み
+        d3.json("data.json", (error, data) => {
+                var accessor = candlestick.accessor(),
+                indicatorPreRoll = 33;  // Don't show where indicators don't have data
+                data = data.map( (d) => {
+                        return {
+                                date: parseDate(d.Date),
+                                open: +d.Open,
+                                high: +d.High,
+                                low: +d.Low,
+                                close: +d.Close,
+                                volume: +d.Volume
+                        };
         }).sort((a, b) => {
-            return d3.ascending(accessor.d(a), accessor.d(b));
+                return d3.ascending(accessor.d(a), accessor.d(b));
         });
 
         x.domain(techan.scale.plot.time(data, accessor).domain());
@@ -141,6 +164,6 @@ function chart(name, symbol, fullWidth, fullHeight) {
     }
 }
 
-chart("Facebook, Inc.", "FB", 300, 200);
-chart("Google, Inc.", "GOOG", 300, 200);
-chart("Apple, Inc.", "AAPL", 300, 200);
+chart("Facebook, Inc.", "FB", 600, 400);
+chart("Google, Inc.", "GOOG", 600, 400);
+chart("Apple, Inc.", "AAPL", 600, 400);
