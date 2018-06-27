@@ -25,12 +25,12 @@ function chart(name, symbol, fullWidth, fullHeight) {
         // Y軸の設定・・d3のscaleLinear
         var y = d3.scaleLinear().range([height, 0]);
 
-        // 不要？　Y軸パーセント？
+        // 不要　Y軸パーセント
         // この段階でyと同じですが、後で別のドメインを取得します
-        var yPercent = y.copy(); 
+        //var yPercent = y.copy(); 
         
-        // 不要？　ボリュームのY軸？
-        var yVolume = d3.scaleLinear().range([height, height - volumeHeight]);
+        // 不要　ボリュームのY軸
+        //var yVolume = d3.scaleLinear().range([height, height - volumeHeight]);
         
         var yInit, yPercentInit, zoomableInit;
         
@@ -38,6 +38,7 @@ function chart(name, symbol, fullWidth, fullHeight) {
         var candlestick = techan.plot.candlestick()
             .xScale(x)
             .yScale(y);
+ 
         // 単純移動平均の設定（軸の設定）
         var sma0 = techan.plot.sma()
             .xScale(x)
@@ -48,11 +49,16 @@ function chart(name, symbol, fullWidth, fullHeight) {
             .xScale(x)
             .yScale(y);
             
-        // ？
+        // 単純移動平均の設定（軸の設定）
+        var sma2 = techan.plot.sma()
+        .xScale(x)
+        .yScale(y);
+
+        // X軸のラベル設定(ラベルを軸の下側、4つごと)
         var xAxis = d3.axisBottom(x).ticks(4);
 
-        // ？
-        var yAxis = d3.axisRight(y).ticks(4);
+        // Y軸のラベル設定(ラベルを軸の左側、4つごと)
+        var yAxis = d3.axisLeft(y).ticks(4);
         
         // SVGの作成
         var svg = d3.select("body").append("svg")
@@ -67,7 +73,7 @@ function chart(name, symbol, fullWidth, fullHeight) {
             .attr("x", 5)
             .text(name + " (" + symbol + ")");
     
-        // ？
+        // ビュー指定
         svg.append("clipPath")
             .attr("id", "clip")
             .append("rect")
@@ -76,32 +82,37 @@ function chart(name, symbol, fullWidth, fullHeight) {
             .attr("width", width)
             .attr("height", y(0) - y(1));
 
-        // ？
+        // ビューにローソク足を指定
         svg.append("g")
             .attr("class", "candlestick")
             .attr("clip-path", "url(#clip)");
 
-        // ？
+        // ビューに移動平均を指定
         svg.append("g")
             .attr("class", "indicator sma ma-0")
             .attr("clip-path", "url(#clip)");
 
-        // ？
+        // ビューに移動平均を指定
         svg.append("g")
             .attr("class", "indicator sma ma-1")
             .attr("clip-path", "url(#clip)");
 
-        // ？
+        // ビューに移動平均を指定
+        svg.append("g")
+        .attr("class", "indicator sma ma-2")
+        .attr("clip-path", "url(#clip)");
+
+        // X軸の位置
         svg.append("g")
             .attr("class", "x axis")
             .attr("transform", "translate(0," + height + ")");
 
-        // ？
+        // Y軸の位置
         svg.append("g")
             .attr("class", "y axis")
-            .attr("transform", "translate(" + width + ",0)");
+            .attr("transform", "translate(0, 0)");
 
-        // ？
+        // ズーム枠の指定
         svg.append("rect")
             .attr("class", "pane")
             .attr("width", width)
@@ -111,7 +122,7 @@ function chart(name, symbol, fullWidth, fullHeight) {
         // データ読み込み
         d3.json("data.json", (error, data) => {
                 var accessor = candlestick.accessor(),
-                indicatorPreRoll = 33;  // Don't show where indicators don't have data
+                indicatorPreRoll = 75;  // indicatorsが表示できない範囲をオフセット
                 data = data.map( (d) => {
                         return {
                                 date: parseDate(d.Date),
@@ -125,16 +136,20 @@ function chart(name, symbol, fullWidth, fullHeight) {
                 return d3.ascending(accessor.d(a), accessor.d(b));
         });
 
+        // techanのX軸＝時間軸を指定
         x.domain(techan.scale.plot.time(data, accessor).domain());
+        // techanのY軸＝ohlcを指定
         y.domain(techan.scale.plot.ohlc(data.slice(indicatorPreRoll), accessor).domain());
-        yPercent.domain(techan.scale.plot.percent(y, accessor(data[indicatorPreRoll])).domain());
-        yVolume.domain(techan.scale.plot.volume(data, accessor.v).domain());
+       // yPercent.domain(techan.scale.plot.percent(y, accessor(data[indicatorPreRoll])).domain());
+       //  yVolume.domain(techan.scale.plot.volume(data, accessor.v).domain());
 
+        // データのバインド
         svg.select("g.candlestick").datum(data).call(candlestick);
-        svg.select("g.sma.ma-0").datum(techan.indicator.sma().period(10)(data)).call(sma0);
-        svg.select("g.sma.ma-1").datum(techan.indicator.sma().period(20)(data)).call(sma1);
+        svg.select("g.sma.ma-0").datum(techan.indicator.sma().period(25)(data)).call(sma0);
+        svg.select("g.sma.ma-1").datum(techan.indicator.sma().period(50)(data)).call(sma1);
+        svg.select("g.sma.ma-2").datum(techan.indicator.sma().period(75)(data)).call(sma2);
 
-        zoomableInit = x.zoomable().domain([indicatorPreRoll, data.length]).copy(); // Zoom in a little to hide indicator preroll
+        zoomableInit = x.zoomable().domain([indicatorPreRoll, data.length]).copy(); // indicatorPreRoll-データの範囲でズーム
         yInit = y.copy();
 
         draw();
@@ -161,6 +176,7 @@ function chart(name, symbol, fullWidth, fullHeight) {
         svg.select("g.candlestick").call(candlestick.refresh);
         svg.select("g.sma.ma-0").call(sma0.refresh);
         svg.select("g.sma.ma-1").call(sma1.refresh);
+        svg.select("g.sma.ma-2").call(sma2.refresh);
     }
 }
 
