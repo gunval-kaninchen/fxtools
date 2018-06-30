@@ -162,10 +162,6 @@ ohlcSelection.append("g")
         .attr("class", "close annotation up");
 
 ohlcSelection.append("g")
-        .attr("class", "volume")
-        .attr("clip-path", "url(#ohlcClip)");
-
-ohlcSelection.append("g")
         .attr("class", "candlestick")
         .attr("clip-path", "url(#ohlcClip)");
 
@@ -183,9 +179,6 @@ ohlcSelection.append("g")
 
 ohlcSelection.append("g")
         .attr("class", "percent axis");
-
-ohlcSelection.append("g")
-        .attr("class", "volume axis");
 
 var indicatorSelection = svg.selectAll("svg > g.indicator").data(["macd"]).enter()
         .append("g")

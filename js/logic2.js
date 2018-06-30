@@ -3,15 +3,17 @@
  
 name:　表の名称
 symbol:　通貨ペア
+dataset: データ
+ma[]: 移動平均設定の配列
 fullWidth: 表示幅
 fullHeight:　表示高さ
 */
-function chart(name, symbol, fullWidth, fullHeight) {
+function chart(name, symbol, dataset, ma, fullWidth, fullHeight) {
+
         // マージンの設定    
         var margin = {top: 20, right: 30, bottom: 30, left: 30},
             width = fullWidth - margin.left - margin.right,
-            height = fullHeight - margin.top - margin.bottom,
-            volumeHeight = fullHeight*.25;
+            height = fullHeight - margin.top - margin.bottom;
         
         // 日付フォーマット
         var parseDate = d3.timeParse("%Y-%m-%dT%H:%M:%S.%L%Z");
@@ -24,13 +26,6 @@ function chart(name, symbol, fullWidth, fullHeight) {
         
         // Y軸の設定・・d3のscaleLinear
         var y = d3.scaleLinear().range([height, 0]);
-
-        // 不要　Y軸パーセント
-        // この段階でyと同じですが、後で別のドメインを取得します
-        //var yPercent = y.copy(); 
-        
-        // 不要　ボリュームのY軸
-        //var yVolume = d3.scaleLinear().range([height, height - volumeHeight]);
         
         var yInit, yPercentInit, zoomableInit;
         
@@ -39,20 +34,13 @@ function chart(name, symbol, fullWidth, fullHeight) {
             .xScale(x)
             .yScale(y);
  
-        // 単純移動平均の設定（軸の設定）
-        var sma0 = techan.plot.sma()
-            .xScale(x)
-            .yScale(y);
-
-        // 単純移動平均の設定（軸の設定）
-        var sma1 = techan.plot.sma()
-            .xScale(x)
-            .yScale(y);
-            
-        // 単純移動平均の設定（軸の設定）
-        var sma2 = techan.plot.sma()
-        .xScale(x)
-        .yScale(y);
+        var sma=[];
+        ma.forEach((v, i) => {
+             // 単純移動平均の設定（軸の設定）
+             sma[i] = techan.plot.sma()
+             .xScale(x)
+             .yScale(y);           
+        });
 
         // X軸のラベル設定(ラベルを軸の下側、4つごと)
         var xAxis = d3.axisBottom(x).ticks(4);
@@ -120,9 +108,9 @@ function chart(name, symbol, fullWidth, fullHeight) {
             .call(zoom);
 
         // データ読み込み
-        d3.json("data.json", (error, data) => {
+        d3.json(dataset, (error, data) => {
                 var accessor = candlestick.accessor(),
-                indicatorPreRoll = 75;  // indicatorsが表示できない範囲をオフセット
+                indicatorPreRoll = 0;  // indicatorsが表示できない範囲をオフセット
                 data = data.map( (d) => {
                         return {
                                 date: parseDate(d.Date),
@@ -140,15 +128,13 @@ function chart(name, symbol, fullWidth, fullHeight) {
         x.domain(techan.scale.plot.time(data, accessor).domain());
         // techanのY軸＝ohlcを指定
         y.domain(techan.scale.plot.ohlc(data.slice(indicatorPreRoll), accessor).domain());
-       // yPercent.domain(techan.scale.plot.percent(y, accessor(data[indicatorPreRoll])).domain());
-       //  yVolume.domain(techan.scale.plot.volume(data, accessor.v).domain());
 
         // データのバインド
         svg.select("g.candlestick").datum(data).call(candlestick);
-        svg.select("g.sma.ma-0").datum(techan.indicator.sma().period(25)(data)).call(sma0);
-        svg.select("g.sma.ma-1").datum(techan.indicator.sma().period(50)(data)).call(sma1);
-        svg.select("g.sma.ma-2").datum(techan.indicator.sma().period(75)(data)).call(sma2);
-
+        ma.forEach((v, i) => {
+            var el = "g.sma.ma-" + i;
+            svg.select(el).datum(techan.indicator.sma().period(ma[i])(data)).call(sma[i]);            
+        });
         zoomableInit = x.zoomable().domain([indicatorPreRoll, data.length]).copy(); // indicatorPreRoll-データの範囲でズーム
         yInit = y.copy();
 
@@ -172,14 +158,14 @@ function chart(name, symbol, fullWidth, fullHeight) {
         svg.select("g.x.axis").call(xAxis);
         svg.select("g.y.axis").call(yAxis);
 
-        // We know the data does not change, a simple refresh that does not perform data joins will suffice.
         svg.select("g.candlestick").call(candlestick.refresh);
-        svg.select("g.sma.ma-0").call(sma0.refresh);
-        svg.select("g.sma.ma-1").call(sma1.refresh);
-        svg.select("g.sma.ma-2").call(sma2.refresh);
+        ma.forEach((v, i) => {
+            var el = "g.sma.ma-" + i;
+            svg.select(el).call(sma[i].refresh);            
+        });
     }
 }
 
-chart("Facebook, Inc.", "FB", 600, 400);
-chart("Google, Inc.", "GOOG", 600, 400);
-chart("Apple, Inc.", "AAPL", 600, 400);
+chart("Facebook, Inc.", "FB", "data.json", [25,50,75], 600, 400);
+chart("Google, Inc.", "GOOG", "data.json", [25,50,75], 600, 400);
+chart("Apple, Inc.", "AAPL", "data.json", [25,50,75], 600, 400);
