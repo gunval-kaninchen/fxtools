@@ -66,6 +66,6 @@ function chart(name, symbol, dataset, ma, fullWidth, fullHeight) {
         .axis(xAxis)
         .orient('bottom')
         .format(d3.timeFormat('%Y-%m-%d'))
-        .width(65)
+        .width(65) 
         .translate([0, dim.plot.height]);
 }
