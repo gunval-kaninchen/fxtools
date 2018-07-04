@@ -68,4 +68,8 @@ function chart(name, symbol, dataset, ma, fullWidth, fullHeight) {
         .format(d3.timeFormat('%Y-%m-%d'))
         .width(65) 
         .translate([0, dim.plot.height]);
+
+    var yAxis = d3.axisRight(y);
+
+    
 }
